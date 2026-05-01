@@ -1,3 +1,5 @@
+import 'package:app/src/features/catalog/data/repositories/catalog_repository_impl.dart';
+import 'package:app/src/features/catalog/domain/usecases/catalog_usecases.dart';
 import 'package:app/src/features/products/data/repositories/product_repository_impl.dart';
 import 'package:app/src/features/products/domain/usecases/product_usecases.dart';
 import 'package:app/src/features/products/presentation/controllers/product_detail_controller.dart';
@@ -30,12 +32,17 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
   @override
   void initState() {
     super.initState();
-    final repository = ProductRepositoryImpl();
+    final productRepository = ProductRepositoryImpl();
+    final catalogRepository = CatalogRepositoryImpl();
+
     _controller = ProductDetailController(
       productId: widget.args.productId,
-      getProductById: GetProductById(repository),
-      getPriceHistory: GetProductPriceHistory(repository),
-      deleteProduct: DeleteProduct(repository),
+      getProductById: GetProductById(productRepository),
+      getPriceHistory: GetProductPriceHistory(productRepository),
+      deleteProduct: DeleteProduct(productRepository),
+      getCategories: GetCatalogCategories(catalogRepository),
+      getSubcategories: GetCatalogSubcategories(catalogRepository),
+      getUnits: GetUnitsOfMeasure(catalogRepository),
     )..load();
   }
 
@@ -146,7 +153,11 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                     child: ListView(
                       padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
                       children: [
-                        _ProductHeaderCard(product: product),
+                        _ProductHeaderCard(
+                          product: product,
+                          categoryLabel: c.categoryLabel,
+                          subcategoryLabel: c.subcategoryLabel,
+                        ),
                         const SizedBox(height: 12),
                         _PriceSectionCard(product: product),
                         const SizedBox(height: 12),
@@ -157,7 +168,10 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                         const SizedBox(height: 12),
                         _InventoryCard(product: product),
                         const SizedBox(height: 12),
-                        _AdminDataCard(product: product),
+                        _AdminDataCard(
+                          product: product,
+                          unitLabel: c.unitLabel,
+                        ),
                         const SizedBox(height: 20),
                         Text(
                           'Historial de precios',
@@ -180,9 +194,15 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
 }
 
 class _ProductHeaderCard extends StatelessWidget {
-  const _ProductHeaderCard({required this.product});
+  const _ProductHeaderCard({
+    required this.product,
+    required this.categoryLabel,
+    required this.subcategoryLabel,
+  });
 
   final dynamic product;
+  final String? categoryLabel;
+  final String? subcategoryLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -209,14 +229,14 @@ class _ProductHeaderCard extends StatelessWidget {
           _InfoRow(
             icon: Icons.category_outlined,
             label: 'Categoría',
-            value: product.category,
+            value: categoryLabel ?? product.category,
           ),
           if ((product.subcategory ?? '').isNotEmpty) ...[
             const SizedBox(height: 10),
             _InfoRow(
               icon: Icons.account_tree_outlined,
               label: 'Subcategoría',
-              value: product.subcategory!,
+              value: subcategoryLabel ?? product.subcategory!,
             ),
           ],
           if ((product.brand ?? '').isNotEmpty) ...[
@@ -376,9 +396,10 @@ class _InventoryCard extends StatelessWidget {
 enum _StockStatus { available, low, out }
 
 class _AdminDataCard extends StatelessWidget {
-  const _AdminDataCard({required this.product});
+  const _AdminDataCard({required this.product, required this.unitLabel});
 
   final dynamic product;
+  final String? unitLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -390,7 +411,7 @@ class _AdminDataCard extends StatelessWidget {
           _InfoRow(
             icon: Icons.straighten_outlined,
             label: 'Unidad',
-            value: product.unitOfMeasure,
+            value: unitLabel ?? product.unitOfMeasure,
           ),
           const SizedBox(height: 10),
           _InfoRow(
