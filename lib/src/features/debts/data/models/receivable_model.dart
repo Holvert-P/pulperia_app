@@ -40,7 +40,8 @@ class ReceivableModel {
       interestPolicy: InterestPolicy(
         monthlyRate: (map['monthly_rate'] as num).toDouble(),
         generationCycleDays: (map['generation_cycle_days'] as num).toInt(),
-        appliesOnOverdueOnly: ((map['applies_on_overdue_only'] as num).toInt()) == 1,
+        appliesOnOverdueOnly:
+            ((map['applies_on_overdue_only'] as num).toInt()) == 1,
         compoundInterest: ((map['compound_interest'] as num).toInt()) == 1,
       ),
       createdAt: DateTime.parse(map['created_at'] as String),
@@ -85,4 +86,3 @@ class ReceivableModel {
     );
   }
 }
-

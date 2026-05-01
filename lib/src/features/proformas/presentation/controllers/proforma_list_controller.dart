@@ -4,7 +4,7 @@ import 'package:flutter/foundation.dart';
 
 class ProformaListController extends ChangeNotifier {
   ProformaListController({required GetProformas getProformas})
-      : _getProformas = getProformas;
+    : _getProformas = getProformas;
 
   final GetProformas _getProformas;
 

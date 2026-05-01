@@ -6,8 +6,8 @@ class ProductSelectorController extends ChangeNotifier {
   ProductSelectorController({
     required GetProducts getProducts,
     required SearchProducts searchProducts,
-  })  : _getProducts = getProducts,
-        _searchProducts = searchProducts;
+  }) : _getProducts = getProducts,
+       _searchProducts = searchProducts;
 
   final GetProducts _getProducts;
   final SearchProducts _searchProducts;
@@ -41,4 +41,3 @@ class ProductSelectorController extends ChangeNotifier {
     notifyListeners();
   }
 }
-

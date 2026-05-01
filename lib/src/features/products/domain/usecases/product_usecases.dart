@@ -1,5 +1,6 @@
 import 'package:app/src/features/products/domain/entities/price_history_entry.dart';
 import 'package:app/src/features/products/domain/entities/product.dart';
+import 'package:app/src/features/products/domain/entities/product_catalog_io_result.dart';
 import 'package:app/src/features/products/domain/repositories/product_repository.dart';
 import 'package:app/src/features/products/domain/services/product_financials.dart';
 
@@ -68,12 +69,34 @@ class GetPriceHistory extends GetProductPriceHistory {
   const GetPriceHistory(super.repository);
 }
 
-class ResetAndImportProductsFromJson {
-  const ResetAndImportProductsFromJson(this._repository);
+class ExportProductsToJson {
+  const ExportProductsToJson(this._repository);
 
   final ProductRepository _repository;
 
-  Future<void> call() => _repository.resetAndImportProductsFromJson();
+  Future<String> call() => _repository.exportProductsToJson();
+}
+
+class ImportProductsFromJson {
+  const ImportProductsFromJson(this._repository);
+
+  final ProductRepository _repository;
+
+  Future<ProductCatalogImportResult> call(String jsonContent) =>
+      _repository.importProductsFromJson(jsonContent);
+}
+
+class ResetProductsCatalogFromJson {
+  const ResetProductsCatalogFromJson(this._repository);
+
+  final ProductRepository _repository;
+
+  Future<ProductCatalogImportResult> call() =>
+      _repository.resetAndImportProductsFromJson();
+}
+
+class ResetAndImportProductsFromJson extends ResetProductsCatalogFromJson {
+  const ResetAndImportProductsFromJson(super.repository);
 }
 
 class SeedProductsCatalog {

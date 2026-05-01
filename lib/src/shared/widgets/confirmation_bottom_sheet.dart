@@ -21,7 +21,8 @@ Future<bool?> showConfirmationBottomSheet({
       final scheme = Theme.of(context).colorScheme;
       final effectiveIconColor = iconColor ?? scheme.error;
       final effectiveConfirmBackground = confirmBackgroundColor ?? scheme.error;
-      final effectiveConfirmForeground = confirmForegroundColor ?? scheme.onError;
+      final effectiveConfirmForeground =
+          confirmForegroundColor ?? scheme.onError;
 
       return SafeArea(
         child: Padding(
@@ -37,10 +38,9 @@ Future<bool?> showConfirmationBottomSheet({
                   Expanded(
                     child: Text(
                       title,
-                      style: Theme.of(context)
-                          .textTheme
-                          .titleMedium
-                          ?.copyWith(fontWeight: FontWeight.w900),
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w900,
+                      ),
                     ),
                   ),
                 ],
@@ -51,9 +51,9 @@ Future<bool?> showConfirmationBottomSheet({
                   headline,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        fontWeight: FontWeight.w700,
-                      ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700),
                 ),
               ],
               if (supportingText != null) ...[
@@ -61,9 +61,9 @@ Future<bool?> showConfirmationBottomSheet({
                 Text(
                   supportingText,
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: scheme.onSurfaceVariant,
-                        fontWeight: FontWeight.w600,
-                      ),
+                    color: scheme.onSurfaceVariant,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ],
               const SizedBox(height: 14),
@@ -97,4 +97,3 @@ Future<bool?> showConfirmationBottomSheet({
     },
   );
 }
-

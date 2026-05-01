@@ -82,9 +82,9 @@ class _AddPaymentDialogState extends State<AddPaymentDialog> {
         children: [
           Text(
             'Registrar pago',
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.w900,
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
           ),
           const SizedBox(height: 10),
           TextField(

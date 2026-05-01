@@ -160,11 +160,43 @@ class ProductModel {
       vatAmountOnCost: financials.vatAmountOnCost,
       stock: (json['stock'] as num?)?.toDouble() ?? 0,
       minStock: (json['min_stock'] as num?)?.toDouble() ?? 0,
-      isActive: (json['is_active'] as bool?) ?? true,
-      allowDecimalQuantity: (json['allow_decimal_quantity'] as bool?) ?? false,
+      isActive: _readBool(json['is_active'], defaultValue: true),
+      allowDecimalQuantity: _readBool(
+        json['allow_decimal_quantity'],
+        defaultValue: false,
+      ),
       createdAt: createdAt,
       updatedAt: updatedAt,
     );
+  }
+
+  Map<String, Object?> toJson() {
+    return {
+      'id': id,
+      'sku': sku,
+      'name': name,
+      'normalized_name': normalizedName,
+      'brand': brand,
+      'category': category,
+      'subcategory': subcategory,
+      'unit_of_measure': unitOfMeasure,
+      'barcode': barcode,
+      'cost_price': costPrice,
+      'cost_price_without_vat': costPriceWithoutVat,
+      'sale_price': salePrice,
+      'margin_amount': marginAmount,
+      'margin_percent': marginPercent,
+      'currency': currency,
+      'tax_type': taxType,
+      'vat_rate_applied': vatRateApplied,
+      'vat_amount_on_cost': vatAmountOnCost,
+      'stock': stock,
+      'min_stock': minStock,
+      'is_active': isActive,
+      'allow_decimal_quantity': allowDecimalQuantity,
+      'created_at': createdAt.toIso8601String(),
+      'updated_at': updatedAt.toIso8601String(),
+    };
   }
 
   Map<String, Object?> toMap() {
@@ -223,6 +255,17 @@ class ProductModel {
       createdAt: createdAt,
       updatedAt: updatedAt,
     );
+  }
+
+  static bool _readBool(Object? value, {required bool defaultValue}) {
+    if (value is bool) return value;
+    if (value is num) return value.toInt() == 1;
+    if (value is String) {
+      final normalized = value.trim().toLowerCase();
+      if (normalized == 'true' || normalized == '1') return true;
+      if (normalized == 'false' || normalized == '0') return false;
+    }
+    return defaultValue;
   }
 
   static ProductModel fromEntity(Product product) {

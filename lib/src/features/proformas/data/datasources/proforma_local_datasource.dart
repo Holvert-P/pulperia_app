@@ -5,7 +5,7 @@ import 'package:app/src/features/proformas/domain/entities/proforma_item.dart';
 
 class ProformaLocalDataSource {
   ProformaLocalDataSource({AppDatabase? database})
-      : _database = database ?? AppDatabase.instance;
+    : _database = database ?? AppDatabase.instance;
 
   final AppDatabase _database;
 
@@ -51,10 +51,7 @@ class ProformaLocalDataSource {
 
   Future<List<ProformaModel>> getProformas() async {
     final db = await _database.database;
-    final rows = await db.query(
-      'proformas',
-      orderBy: 'created_at DESC',
-    );
+    final rows = await db.query('proformas', orderBy: 'created_at DESC');
     return rows.map((r) => ProformaModel.fromMap(r)).toList();
   }
 
@@ -74,12 +71,12 @@ class ProformaLocalDataSource {
       whereArgs: [id],
       orderBy: 'id ASC',
     );
-    final items = itemRows.map(ProformaItemModel.fromMap).map((m) => m.toEntity()).toList();
+    final items = itemRows
+        .map(ProformaItemModel.fromMap)
+        .map((m) => m.toEntity())
+        .toList();
 
-    return ProformaModel.fromMap(
-      proformaRows.first,
-      items: items,
-    );
+    return ProformaModel.fromMap(proformaRows.first, items: items);
   }
 
   Future<void> deleteProforma(String id) async {

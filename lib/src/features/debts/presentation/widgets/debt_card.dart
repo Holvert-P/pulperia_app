@@ -64,9 +64,9 @@ class DebtCard extends StatelessWidget {
                       child: Text(
                         initials,
                         style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                              color: statusColor,
-                              fontWeight: FontWeight.w900,
-                            ),
+                          color: statusColor,
+                          fontWeight: FontWeight.w900,
+                        ),
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -76,9 +76,7 @@ class DebtCard extends StatelessWidget {
                         children: [
                           Text(
                             item.receivable.customerName,
-                            style: Theme.of(context)
-                                .textTheme
-                                .titleMedium
+                            style: Theme.of(context).textTheme.titleMedium
                                 ?.copyWith(fontWeight: FontWeight.w900),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -86,19 +84,16 @@ class DebtCard extends StatelessWidget {
                           const SizedBox(height: 2),
                           Text(
                             'Vence: ${formatDate(item.receivable.dueDate)}',
-                            style:
-                                Theme.of(context).textTheme.bodySmall?.copyWith(
-                                      color: scheme.onSurfaceVariant,
-                                      fontWeight: FontWeight.w600,
-                                    ),
+                            style: Theme.of(context).textTheme.bodySmall
+                                ?.copyWith(
+                                  color: scheme.onSurfaceVariant,
+                                  fontWeight: FontWeight.w600,
+                                ),
                           ),
                         ],
                       ),
                     ),
-                    _StatusPill(
-                      text: _statusText(),
-                      color: statusColor,
-                    ),
+                    _StatusPill(text: _statusText(), color: statusColor),
                   ],
                 ),
                 const SizedBox(height: 12),
@@ -111,27 +106,22 @@ class DebtCard extends StatelessWidget {
                         children: [
                           Text(
                             'Saldo',
-                            style:
-                                Theme.of(context).textTheme.labelMedium?.copyWith(
-                                      color: scheme.onSurfaceVariant,
-                                      fontWeight: FontWeight.w700,
-                                    ),
+                            style: Theme.of(context).textTheme.labelMedium
+                                ?.copyWith(
+                                  color: scheme.onSurfaceVariant,
+                                  fontWeight: FontWeight.w700,
+                                ),
                           ),
                           const SizedBox(height: 2),
                           Text(
                             formatMoney(item.balances.totalPending),
-                            style: Theme.of(context)
-                                .textTheme
-                                .titleLarge
+                            style: Theme.of(context).textTheme.titleLarge
                                 ?.copyWith(fontWeight: FontWeight.w900),
                           ),
                         ],
                       ),
                     ),
-                    Icon(
-                      Icons.chevron_right,
-                      color: scheme.onSurfaceVariant,
-                    ),
+                    Icon(Icons.chevron_right, color: scheme.onSurfaceVariant),
                   ],
                 ),
                 const SizedBox(height: 12),
@@ -159,9 +149,9 @@ class DebtCard extends StatelessWidget {
                   Text(
                     '${item.balances.daysOverdue} días de atraso',
                     style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                          color: statusColor,
-                          fontWeight: FontWeight.w900,
-                        ),
+                      color: statusColor,
+                      fontWeight: FontWeight.w900,
+                    ),
                   ),
                 ],
               ],
@@ -192,9 +182,9 @@ class _StatusPill extends StatelessWidget {
         child: Text(
           text,
           style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                color: color,
-                fontWeight: FontWeight.w900,
-              ),
+            color: color,
+            fontWeight: FontWeight.w900,
+          ),
         ),
       ),
     );
@@ -237,16 +227,16 @@ class _MiniStat extends StatelessWidget {
                     Text(
                       label,
                       style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                            color: foregroundColor,
-                            fontWeight: FontWeight.w700,
-                          ),
+                        color: foregroundColor,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                     Text(
                       value,
                       style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                            color: foregroundColor,
-                            fontWeight: FontWeight.w900,
-                          ),
+                        color: foregroundColor,
+                        fontWeight: FontWeight.w900,
+                      ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),

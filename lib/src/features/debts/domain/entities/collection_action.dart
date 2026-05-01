@@ -15,4 +15,3 @@ class CollectionAction {
   final DateTime actionAt;
   final DateTime createdAt;
 }
-

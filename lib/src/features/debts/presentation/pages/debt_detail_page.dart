@@ -420,8 +420,7 @@ class _DebtDetailView extends StatelessWidget {
                         ),
                       ),
                     ),
-                  if (!detail.canRegisterPayment)
-                    const SizedBox(height: 12),
+                  if (!detail.canRegisterPayment) const SizedBox(height: 12),
                   Text(
                     'Movimientos',
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(

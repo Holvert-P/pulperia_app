@@ -6,7 +6,7 @@ class AppDatabase {
 
   static final AppDatabase instance = AppDatabase._();
 
-  static const int _version = 7;
+  static const int _version = 8;
 
   Database? _database;
 
@@ -29,6 +29,7 @@ class AppDatabase {
       },
       onCreate: (db, version) async {
         await _createProductsSchema(db);
+        await _createCatalogSchema(db);
 
         await db.execute('''
 CREATE TABLE proformas (
@@ -269,9 +270,71 @@ CREATE TABLE IF NOT EXISTS debt_interest_history (
         if (oldVersion < 7) {
           await _migrateDebtsToReceivables(db);
         }
+
+        if (oldVersion < 8) {
+          await _createCatalogSchema(db);
+        }
       },
     );
   }
+}
+
+Future<void> _createCatalogSchema(DatabaseExecutor db) async {
+  await db.execute('''
+CREATE TABLE IF NOT EXISTS categories (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  normalized_name TEXT NOT NULL UNIQUE,
+  description TEXT,
+  icon_name TEXT,
+  color_hex TEXT,
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  is_active INTEGER NOT NULL DEFAULT 1,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+)
+''');
+
+  await db.execute('''
+CREATE TABLE IF NOT EXISTS subcategories (
+  id TEXT PRIMARY KEY,
+  category_id TEXT NOT NULL,
+  name TEXT NOT NULL,
+  normalized_name TEXT NOT NULL,
+  description TEXT,
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  is_active INTEGER NOT NULL DEFAULT 1,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  FOREIGN KEY(category_id) REFERENCES categories(id),
+  UNIQUE(category_id, normalized_name)
+)
+''');
+
+  await db.execute('''
+CREATE TABLE IF NOT EXISTS units_of_measure (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  normalized_name TEXT NOT NULL UNIQUE,
+  symbol TEXT,
+  allows_decimal INTEGER NOT NULL DEFAULT 0,
+  description TEXT,
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  is_active INTEGER NOT NULL DEFAULT 1,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+)
+''');
+
+  await db.execute(
+    'CREATE INDEX IF NOT EXISTS idx_categories_active_order ON categories(is_active, sort_order)',
+  );
+  await db.execute(
+    'CREATE INDEX IF NOT EXISTS idx_subcategories_category ON subcategories(category_id, is_active, sort_order)',
+  );
+  await db.execute(
+    'CREATE INDEX IF NOT EXISTS idx_units_active_order ON units_of_measure(is_active, sort_order)',
+  );
 }
 
 Future<void> _createProductsSchema(DatabaseExecutor db) async {

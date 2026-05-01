@@ -2,10 +2,7 @@ String formatMoney(double value) {
   return 'C\$ ${formatNumber(value, decimals: 2)}';
 }
 
-String formatNumber(
-  num value, {
-  int decimals = 2,
-}) {
+String formatNumber(num value, {int decimals = 2}) {
   if (value is double && !value.isFinite) {
     return value.toString();
   }
@@ -27,7 +24,9 @@ String formatNumber(
   }
 
   final formattedWhole = buffer.toString();
-  final formatted = fraction.isEmpty ? formattedWhole : '$formattedWhole.$fraction';
+  final formatted = fraction.isEmpty
+      ? formattedWhole
+      : '$formattedWhole.$fraction';
   return isNegative ? '-$formatted' : formatted;
 }
 

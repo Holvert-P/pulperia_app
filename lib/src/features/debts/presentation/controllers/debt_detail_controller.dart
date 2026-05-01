@@ -74,7 +74,9 @@ class DebtDetailController extends ChangeNotifier {
     _error = null;
     notifyListeners();
     try {
-      final count = await _generateReceivableInterest(receivableId: _receivableId);
+      final count = await _generateReceivableInterest(
+        receivableId: _receivableId,
+      );
       await load();
       return count;
     } catch (e) {

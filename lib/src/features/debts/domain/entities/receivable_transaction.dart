@@ -31,4 +31,3 @@ class ReceivableTransaction {
   final double? baseAmount;
   final double? generatedAmount;
 }
-

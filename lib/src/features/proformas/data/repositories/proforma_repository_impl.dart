@@ -5,7 +5,7 @@ import 'package:app/src/features/proformas/domain/repositories/proforma_reposito
 
 class ProformaRepositoryImpl implements ProformaRepository {
   ProformaRepositoryImpl({ProformaLocalDataSource? localDataSource})
-      : _localDataSource = localDataSource ?? ProformaLocalDataSource();
+    : _localDataSource = localDataSource ?? ProformaLocalDataSource();
 
   final ProformaLocalDataSource _localDataSource;
 

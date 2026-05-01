@@ -2,6 +2,12 @@ import 'package:app/src/features/debts/presentation/pages/add_payment_page.dart'
 import 'package:app/src/features/debts/presentation/pages/debt_detail_page.dart';
 import 'package:app/src/features/debts/presentation/pages/debt_form_page.dart';
 import 'package:app/src/features/debts/presentation/pages/debt_list_page.dart';
+import 'package:app/src/features/catalog/presentation/pages/category_form_page.dart';
+import 'package:app/src/features/catalog/presentation/pages/category_manager_page.dart';
+import 'package:app/src/features/catalog/presentation/pages/subcategory_form_page.dart';
+import 'package:app/src/features/catalog/presentation/pages/subcategory_manager_page.dart';
+import 'package:app/src/features/catalog/presentation/pages/unit_form_page.dart';
+import 'package:app/src/features/catalog/presentation/pages/unit_manager_page.dart';
 import 'package:app/src/features/more/presentation/pages/backup_page.dart';
 import 'package:app/src/features/more/presentation/pages/reports_page.dart';
 import 'package:app/src/features/more/presentation/pages/settings_page.dart';
@@ -140,10 +146,48 @@ class App extends StatelessWidget {
               settings: settings,
               builder: (_) => const SettingsPage(),
             );
+          case '/catalog-settings':
+            return MaterialPageRoute(
+              settings: settings,
+              builder: (_) => const SettingsPage(),
+            );
           case BackupPage.routeName:
             return MaterialPageRoute(
               settings: settings,
               builder: (_) => const BackupPage(),
+            );
+          case CategoryManagerPage.routeName:
+            return MaterialPageRoute(
+              settings: settings,
+              builder: (_) => const CategoryManagerPage(),
+            );
+          case CategoryFormPage.routeName:
+            final args = settings.arguments as CategoryFormArgs?;
+            return MaterialPageRoute<bool>(
+              settings: settings,
+              builder: (_) => CategoryFormPage(args: args),
+            );
+          case SubcategoryManagerPage.routeName:
+            return MaterialPageRoute(
+              settings: settings,
+              builder: (_) => const SubcategoryManagerPage(),
+            );
+          case SubcategoryFormPage.routeName:
+            final args = settings.arguments as SubcategoryFormArgs?;
+            return MaterialPageRoute<bool>(
+              settings: settings,
+              builder: (_) => SubcategoryFormPage(args: args),
+            );
+          case UnitManagerPage.routeName:
+            return MaterialPageRoute(
+              settings: settings,
+              builder: (_) => const UnitManagerPage(),
+            );
+          case UnitFormPage.routeName:
+            final args = settings.arguments as UnitFormArgs?;
+            return MaterialPageRoute<bool>(
+              settings: settings,
+              builder: (_) => UnitFormPage(args: args),
             );
           case ProductListPage.routeName:
             return MaterialPageRoute(

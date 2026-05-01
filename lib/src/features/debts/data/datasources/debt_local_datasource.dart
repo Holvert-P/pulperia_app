@@ -29,16 +29,13 @@ class DebtLocalDataSource {
         : 0.0;
 
     await db.transaction((txn) async {
-      await txn.insert(
-        'debts',
-        {
-          ...debt.toMap(),
-          if (shouldGenerateInitialInterest)
-            'accumulated_interest': initialInterest,
-          if (shouldGenerateInitialInterest)
-            'total_amount': debt.principalAmount + initialInterest,
-        },
-      );
+      await txn.insert('debts', {
+        ...debt.toMap(),
+        if (shouldGenerateInitialInterest)
+          'accumulated_interest': initialInterest,
+        if (shouldGenerateInitialInterest)
+          'total_amount': debt.principalAmount + initialInterest,
+      });
 
       if (!shouldGenerateInitialInterest) return;
       await txn.insert(
@@ -55,7 +52,8 @@ class DebtLocalDataSource {
     await NotificationService.instance.ensureDailyPendingDebtNotification(
       debtId: debt.id,
       customerName: debt.customerName,
-      pendingAmount: debt.principalAmount + debt.accumulatedInterest + initialInterest,
+      pendingAmount:
+          debt.principalAmount + debt.accumulatedInterest + initialInterest,
       hour: 9,
       minute: 0,
     );

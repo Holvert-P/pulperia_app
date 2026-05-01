@@ -6,8 +6,8 @@ class ProformaDetailController extends ChangeNotifier {
   ProformaDetailController({
     required GetProformaById getProformaById,
     required String proformaId,
-  })  : _getProformaById = getProformaById,
-        _proformaId = proformaId;
+  }) : _getProformaById = getProformaById,
+       _proformaId = proformaId;
 
   final GetProformaById _getProformaById;
   final String _proformaId;

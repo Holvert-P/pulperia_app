@@ -80,8 +80,8 @@ class GenerateReceivableInterest {
 
   final ReceivableRepository _repository;
 
-  Future<int> call({required String receivableId, DateTime? now}) =>
-      _repository.generateReceivableInterest(receivableId: receivableId, now: now);
+  Future<int> call({required String receivableId, DateTime? now}) => _repository
+      .generateReceivableInterest(receivableId: receivableId, now: now);
 }
 
 class ReverseReceivablePayment {
@@ -93,12 +93,11 @@ class ReverseReceivablePayment {
     required String receiptId,
     required String reason,
     required DateTime reversedAt,
-  }) =>
-      _repository.reverseReceivablePayment(
-        receiptId: receiptId,
-        reason: reason,
-        reversedAt: reversedAt,
-      );
+  }) => _repository.reverseReceivablePayment(
+    receiptId: receiptId,
+    reason: reason,
+    reversedAt: reversedAt,
+  );
 }
 
 class RegisterCollectionAction {
@@ -111,13 +110,12 @@ class RegisterCollectionAction {
     required String type,
     required String note,
     required DateTime actionAt,
-  }) =>
-      _repository.registerCollectionAction(
-        receivableId: receivableId,
-        type: type,
-        note: note,
-        actionAt: actionAt,
-      );
+  }) => _repository.registerCollectionAction(
+    receivableId: receivableId,
+    type: type,
+    note: note,
+    actionAt: actionAt,
+  );
 }
 
 class GetCollectionActions {
@@ -137,4 +135,3 @@ class GetPortfolioSummary {
   Future<PortfolioSummary> call({DateTime? now}) =>
       _repository.getPortfolioSummary(now: now);
 }
-

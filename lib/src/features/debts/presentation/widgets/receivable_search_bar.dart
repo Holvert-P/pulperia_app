@@ -20,4 +20,3 @@ class ReceivableSearchBar extends StatelessWidget {
     );
   }
 }
-

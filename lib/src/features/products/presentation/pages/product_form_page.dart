@@ -1,9 +1,19 @@
+import 'package:app/src/features/catalog/data/repositories/catalog_repository_impl.dart';
+import 'package:app/src/features/catalog/domain/entities/category.dart';
+import 'package:app/src/features/catalog/domain/entities/subcategory.dart';
+import 'package:app/src/features/catalog/domain/entities/unit_of_measure.dart';
+import 'package:app/src/features/catalog/domain/usecases/catalog_usecases.dart';
 import 'package:app/src/features/products/data/repositories/product_repository_impl.dart';
 import 'package:app/src/features/products/domain/entities/product.dart';
 import 'package:app/src/features/products/domain/services/product_financials.dart';
+import 'package:app/src/features/products/domain/services/product_sku_generator.dart';
 import 'package:app/src/features/products/domain/services/product_text_normalizer.dart';
 import 'package:app/src/features/products/domain/usecases/product_usecases.dart';
-import 'package:app/src/shared/utils/formatters.dart';
+import 'package:app/src/features/products/presentation/widgets/product_form_field.dart';
+import 'package:app/src/features/products/presentation/widgets/product_form_section_card.dart';
+import 'package:app/src/features/products/presentation/widgets/product_profit_summary_card.dart';
+import 'package:app/src/features/products/presentation/widgets/product_selector_field.dart';
+import 'package:app/src/features/products/presentation/widgets/product_status_switch_tile.dart';
 import 'package:flutter/material.dart';
 
 class ProductFormArgs {
@@ -28,22 +38,33 @@ class _ProductFormPageState extends State<ProductFormPage> {
   final _skuController = TextEditingController();
   final _nameController = TextEditingController();
   final _brandController = TextEditingController();
-  final _categoryController = TextEditingController();
-  final _subcategoryController = TextEditingController();
-  final _unitController = TextEditingController(text: 'unidad');
   final _barcodeController = TextEditingController();
   final _costController = TextEditingController();
+  final _costWithoutVatController = TextEditingController(text: '0.00');
   final _saleController = TextEditingController();
   final _stockController = TextEditingController(text: '0');
   final _minStockController = TextEditingController(text: '0');
 
-  late final ProductRepositoryImpl _repository;
   late final GetProductById _getProductById;
   late final CreateProduct _createProduct;
   late final UpdateProduct _updateProduct;
   late final RecalculateProductFinancials _recalculateFinancials;
+  late final GetCatalogCategories _getCategories;
+  late final GetCatalogSubcategories _getSubcategories;
+  late final GetUnitsOfMeasure _getUnits;
+  late final CountProductsForCatalogCategory _countProductsForCategory;
+  late final ProductSkuGenerator _skuGenerator;
 
-  bool _loading = false;
+  List<CatalogCategory> _categories = const [];
+  List<CatalogSubcategory> _subcategories = const [];
+  List<UnitOfMeasure> _units = const [];
+  CatalogCategory? _selectedCategory;
+  CatalogSubcategory? _selectedSubcategory;
+  UnitOfMeasure? _selectedUnit;
+
+  bool _loading = true;
+  bool _saving = false;
+  bool _hydrating = false;
   bool _isActive = true;
   bool _allowDecimalQuantity = false;
   String? _productId;
@@ -52,70 +73,147 @@ class _ProductFormPageState extends State<ProductFormPage> {
   @override
   void initState() {
     super.initState();
-    _repository = ProductRepositoryImpl();
-    _getProductById = GetProductById(_repository);
-    _createProduct = CreateProduct(_repository);
-    _updateProduct = UpdateProduct(_repository);
+    final productRepository = ProductRepositoryImpl();
+    final catalogRepository = CatalogRepositoryImpl();
+    _getProductById = GetProductById(productRepository);
+    _createProduct = CreateProduct(productRepository);
+    _updateProduct = UpdateProduct(productRepository);
     _recalculateFinancials = const RecalculateProductFinancials();
-
-    _skuController.addListener(_onFieldsChanged);
-    _nameController.addListener(_onFieldsChanged);
-    _brandController.addListener(_onFieldsChanged);
-    _categoryController.addListener(_onFieldsChanged);
-    _subcategoryController.addListener(_onFieldsChanged);
-    _unitController.addListener(_onFieldsChanged);
-    _barcodeController.addListener(_onFieldsChanged);
-    _costController.addListener(_onFieldsChanged);
-    _saleController.addListener(_onFieldsChanged);
-    _stockController.addListener(_onFieldsChanged);
-    _minStockController.addListener(_onFieldsChanged);
-
+    _getCategories = GetCatalogCategories(catalogRepository);
+    _getSubcategories = GetCatalogSubcategories(catalogRepository);
+    _getUnits = GetUnitsOfMeasure(catalogRepository);
+    _countProductsForCategory = CountProductsForCatalogCategory(
+      catalogRepository,
+    );
+    _skuGenerator = const ProductSkuGenerator();
     _productId = widget.args?.productId;
-    if (_productId != null) {
-      _loadExisting(_productId!);
+
+    for (final controller in [
+      _skuController,
+      _nameController,
+      _brandController,
+      _barcodeController,
+      _costController,
+      _saleController,
+      _stockController,
+      _minStockController,
+    ]) {
+      controller.addListener(_onFieldsChanged);
     }
+
+    _load();
   }
 
   @override
   void dispose() {
-    _skuController.removeListener(_onFieldsChanged);
-    _nameController.removeListener(_onFieldsChanged);
-    _brandController.removeListener(_onFieldsChanged);
-    _categoryController.removeListener(_onFieldsChanged);
-    _subcategoryController.removeListener(_onFieldsChanged);
-    _unitController.removeListener(_onFieldsChanged);
-    _barcodeController.removeListener(_onFieldsChanged);
-    _costController.removeListener(_onFieldsChanged);
-    _saleController.removeListener(_onFieldsChanged);
-    _stockController.removeListener(_onFieldsChanged);
-    _minStockController.removeListener(_onFieldsChanged);
+    for (final controller in [
+      _skuController,
+      _nameController,
+      _brandController,
+      _barcodeController,
+      _costController,
+      _saleController,
+      _stockController,
+      _minStockController,
+    ]) {
+      controller.removeListener(_onFieldsChanged);
+    }
     _skuController.dispose();
     _nameController.dispose();
     _brandController.dispose();
-    _categoryController.dispose();
-    _subcategoryController.dispose();
-    _unitController.dispose();
     _barcodeController.dispose();
     _costController.dispose();
+    _costWithoutVatController.dispose();
     _saleController.dispose();
     _stockController.dispose();
     _minStockController.dispose();
     super.dispose();
   }
 
+  Future<void> _load() async {
+    final product = _productId == null
+        ? null
+        : await _getProductById(_productId!);
+    final categories = await _getCategories(includeInactive: true);
+    final subcategories = await _getSubcategories(includeInactive: true);
+    final units = await _getUnits(includeInactive: true);
+
+    if (!mounted) return;
+    _categories = categories;
+    _subcategories = subcategories;
+    _units = units;
+    _hydrating = true;
+    if (product != null) {
+      _loadProduct(product);
+    } else {
+      _selectedCategory = _firstActiveCategory(categories);
+      _selectedSubcategory = _firstSubcategoryFor(_selectedCategory);
+      _selectedUnit = _firstActiveUnit(units);
+    }
+    _hydrating = false;
+    _syncCostWithoutVat();
+    setState(() => _loading = false);
+    final initialCategory = _selectedCategory;
+    if (product == null && initialCategory != null) {
+      await _selectCategory(initialCategory);
+    }
+  }
+
+  void _loadProduct(Product product) {
+    _createdAt = product.createdAt;
+    _skuController.text = product.sku;
+    _nameController.text = product.name;
+    _brandController.text = product.brand ?? '';
+    _barcodeController.text = product.barcode ?? '';
+    _costController.text = product.costPrice.toStringAsFixed(2);
+    _saleController.text = product.salePrice.toStringAsFixed(2);
+    _stockController.text = product.stock.toStringAsFixed(
+      product.allowDecimalQuantity ? 2 : 0,
+    );
+    _minStockController.text = product.minStock.toStringAsFixed(
+      product.allowDecimalQuantity ? 2 : 0,
+    );
+    _isActive = product.isActive;
+    _allowDecimalQuantity = product.allowDecimalQuantity;
+    _selectedCategory = _categories.cast<CatalogCategory?>().firstWhere(
+      (category) => category?.normalizedName == product.category,
+      orElse: () => null,
+    );
+    _selectedSubcategory = _subcategories
+        .cast<CatalogSubcategory?>()
+        .firstWhere(
+          (subcategory) =>
+              subcategory?.categoryId == _selectedCategory?.id &&
+              subcategory?.normalizedName == product.subcategory,
+          orElse: () => null,
+        );
+    _selectedUnit = _units.cast<UnitOfMeasure?>().firstWhere(
+      (unit) => unit?.normalizedName == product.unitOfMeasure,
+      orElse: () => null,
+    );
+  }
+
   void _onFieldsChanged() {
+    if (_hydrating) return;
+    _syncCostWithoutVat();
     setState(() {});
   }
 
+  void _syncCostWithoutVat() {
+    final value = _financials.costPriceWithoutVat.toStringAsFixed(2);
+    if (_costWithoutVatController.text != value) {
+      _costWithoutVatController.text = value;
+    }
+  }
+
   double? _parseMoney(String raw) {
-    final t = raw.trim().replaceAll(',', '.');
-    if (t.isEmpty) return null;
-    return double.tryParse(t);
+    final normalized = raw.trim().replaceAll(',', '.');
+    if (normalized.isEmpty) return null;
+    return double.tryParse(normalized);
   }
 
   double? get _costValue => _parseMoney(_costController.text);
   double? get _saleValue => _parseMoney(_saleController.text);
-
   double? get _stockValue => _parseMoney(_stockController.text);
   double? get _minStockValue => _parseMoney(_minStockController.text);
 
@@ -128,150 +226,198 @@ class _ProductFormPageState extends State<ProductFormPage> {
 
   bool get _isLoss => _financials.marginAmount < 0;
 
-  Future<void> _loadExisting(String id) async {
-    setState(() => _loading = true);
-    final product = await _getProductById(id);
-    if (!mounted) return;
-    if (product == null) {
-      setState(() => _loading = false);
-      return;
-    }
+  List<CatalogCategory> get _selectableCategories => _categories
+      .where((item) => item.isActive || item.id == _selectedCategory?.id)
+      .toList();
 
+  List<CatalogSubcategory> get _selectableSubcategories => _subcategories
+      .where(
+        (item) =>
+            item.categoryId == _selectedCategory?.id &&
+            (item.isActive || item.id == _selectedSubcategory?.id),
+      )
+      .toList();
+
+  List<UnitOfMeasure> get _selectableUnits => _units
+      .where((item) => item.isActive || item.id == _selectedUnit?.id)
+      .toList();
+
+  CatalogCategory? _firstActiveCategory(List<CatalogCategory> categories) {
+    for (final category in categories) {
+      if (category.isActive) return category;
+    }
+    return categories.isEmpty ? null : categories.first;
+  }
+
+  CatalogSubcategory? _firstSubcategoryFor(CatalogCategory? category) {
+    if (category == null) return null;
+    final items = _subcategories
+        .where((item) => item.categoryId == category.id && item.isActive)
+        .toList();
+    final general = items.cast<CatalogSubcategory?>().firstWhere(
+      (item) => item?.normalizedName == 'general',
+      orElse: () => null,
+    );
+    return general ?? (items.isEmpty ? null : items.first);
+  }
+
+  UnitOfMeasure? _firstActiveUnit(List<UnitOfMeasure> units) {
+    for (final unit in units) {
+      if (unit.isActive && unit.normalizedName == 'unidad') return unit;
+    }
+    for (final unit in units) {
+      if (unit.isActive) return unit;
+    }
+    return units.isEmpty ? null : units.first;
+  }
+
+  Future<void> _selectCategory(CatalogCategory category) async {
     setState(() {
-      _createdAt = product.createdAt;
-      _skuController.text = product.sku;
-      _nameController.text = product.name;
-      _brandController.text = product.brand ?? '';
-      _categoryController.text = product.category;
-      _subcategoryController.text = product.subcategory ?? '';
-      _unitController.text = product.unitOfMeasure;
-      _barcodeController.text = product.barcode ?? '';
-      _costController.text = product.costPrice.toStringAsFixed(2);
-      _saleController.text = product.salePrice.toStringAsFixed(2);
-      _stockController.text = product.stock.toStringAsFixed(
-        product.allowDecimalQuantity ? 2 : 0,
+      _selectedCategory = category;
+      _selectedSubcategory = _firstSubcategoryFor(category);
+    });
+    if (_skuController.text.trim().isEmpty) {
+      final count = await _countProductsForCategory(category.normalizedName);
+      if (!mounted || _skuController.text.trim().isNotEmpty) return;
+      _skuController.text = _skuGenerator(
+        categoryNormalizedName: category.normalizedName,
+        sequence: count + 1,
       );
-      _minStockController.text = product.minStock.toStringAsFixed(
-        product.allowDecimalQuantity ? 2 : 0,
-      );
-      _isActive = product.isActive;
-      _allowDecimalQuantity = product.allowDecimalQuantity;
-      _loading = false;
+    }
+  }
+
+  void _selectUnit(UnitOfMeasure unit) {
+    setState(() {
+      _selectedUnit = unit;
+      if (unit.allowsDecimal) {
+        _allowDecimalQuantity = true;
+      }
     });
   }
 
   Future<void> _save() async {
-    final isValid = _formKey.currentState?.validate() ?? false;
-    if (!isValid) return;
-
-    final cost = _costValue!;
-    final sale = _saleValue!;
-    final stock = _stockValue ?? 0;
-    final minStock = _minStockValue ?? 0;
-
-    if (sale < cost) {
-      await showModalBottomSheet<void>(
-        context: context,
-        showDragHandle: true,
-        builder: (context) {
-          final scheme = Theme.of(context).colorScheme;
-          return SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Icon(Icons.warning_amber_outlined, color: scheme.error),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Text(
-                          'Pérdida detectada',
-                          style: Theme.of(context).textTheme.titleMedium
-                              ?.copyWith(fontWeight: FontWeight.w900),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-                  const Text('El precio de venta no puede ser menor al costo.'),
-                  const SizedBox(height: 14),
-                  SizedBox(
-                    width: double.infinity,
-                    child: FilledButton(
-                      onPressed: () => Navigator.of(context).pop(),
-                      child: const Text('Entendido'),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          );
-        },
-      );
+    if (!(_formKey.currentState?.validate() ?? false)) return;
+    if (_selectedCategory == null) {
+      _showError('Selecciona una categoria.');
+      return;
+    }
+    if (_selectedUnit == null) {
+      _showError('Selecciona una unidad de medida.');
       return;
     }
 
-    setState(() => _loading = true);
-    final now = DateTime.now();
-    final name = _nameController.text.trim();
-    final category = ProductTextNormalizer.normalizeCategory(
-      _categoryController.text.trim(),
-    );
-    final subcategoryRaw = _subcategoryController.text.trim();
-    final financials = _financials;
-    final product = Product(
-      id: _productId ?? now.microsecondsSinceEpoch.toString(),
-      sku: _skuController.text.trim(),
-      name: name,
-      normalizedName: ProductTextNormalizer.normalizeName(name),
-      brand: _brandController.text.trim().isEmpty
-          ? null
-          : _brandController.text.trim(),
-      category: category,
-      subcategory: subcategoryRaw.isEmpty
-          ? null
-          : ProductTextNormalizer.normalizeCategory(subcategoryRaw),
-      unitOfMeasure: _unitController.text.trim().isEmpty
-          ? 'unidad'
-          : _unitController.text.trim(),
-      barcode: _barcodeController.text.trim().isEmpty
-          ? null
-          : _barcodeController.text.trim(),
-      costPrice: cost,
-      costPriceWithoutVat: financials.costPriceWithoutVat,
-      salePrice: sale,
-      marginAmount: financials.marginAmount,
-      marginPercent: financials.marginPercent,
-      currency: 'NIO',
-      taxType: 'iva_incluido',
-      vatRateApplied: 0.15,
-      vatAmountOnCost: financials.vatAmountOnCost,
-      stock: stock,
-      minStock: minStock,
-      isActive: _isActive,
-      allowDecimalQuantity: _allowDecimalQuantity,
-      createdAt: _createdAt ?? now,
-      updatedAt: now,
-    );
-
-    if (_productId == null) {
-      await _createProduct(product);
-    } else {
-      await _updateProduct(product);
+    final cost = _costValue!;
+    final sale = _saleValue!;
+    if (sale < cost) {
+      final confirmed = await _confirmLoss();
+      if (confirmed != true) return;
     }
 
-    if (!mounted) return;
-    Navigator.of(context).pop();
+    setState(() => _saving = true);
+    try {
+      final now = DateTime.now();
+      final name = _nameController.text.trim();
+      final financials = _financials;
+      final product = Product(
+        id: _productId ?? now.microsecondsSinceEpoch.toString(),
+        sku: _skuController.text.trim(),
+        name: name,
+        normalizedName: ProductTextNormalizer.normalizeName(name),
+        brand: _blankToNull(_brandController.text),
+        category: _selectedCategory!.normalizedName,
+        subcategory: _selectedSubcategory?.normalizedName ?? 'general',
+        unitOfMeasure: _selectedUnit!.normalizedName,
+        barcode: _blankToNull(_barcodeController.text),
+        costPrice: cost,
+        costPriceWithoutVat: financials.costPriceWithoutVat,
+        salePrice: sale,
+        marginAmount: financials.marginAmount,
+        marginPercent: financials.marginPercent,
+        currency: 'NIO',
+        taxType: 'iva_incluido',
+        vatRateApplied: 0.15,
+        vatAmountOnCost: financials.vatAmountOnCost,
+        stock: _stockValue ?? 0,
+        minStock: _minStockValue ?? 0,
+        isActive: _isActive,
+        allowDecimalQuantity: _allowDecimalQuantity,
+        createdAt: _createdAt ?? now,
+        updatedAt: now,
+      );
+
+      if (_productId == null) {
+        await _createProduct(product);
+      } else {
+        await _updateProduct(product);
+      }
+
+      if (!mounted) return;
+      Navigator.of(context).pop(true);
+    } catch (error) {
+      if (!mounted) return;
+      _showError('No se pudo guardar el producto. $error');
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  Future<bool?> _confirmLoss() {
+    return showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Margen negativo'),
+        content: const Text(
+          'El precio de venta es menor que el costo. Puedes guardarlo, pero revisa si es correcto.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Revisar'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Guardar'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String? _blankToNull(String value) {
+    final trimmed = value.trim();
+    return trimmed.isEmpty ? null : trimmed;
+  }
+
+  String? _requiredText(String? value) {
+    return (value?.trim().isEmpty ?? true) ? 'Campo requerido' : null;
+  }
+
+  String? _validNonNegativeNumber(String? value) {
+    final parsed = _parseMoney(value ?? '');
+    if (parsed == null) return 'Ingresa un numero';
+    if (parsed < 0) return 'No puede ser negativo';
+    return null;
+  }
+
+  void _showPendingScanner() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Escaner de codigo de barras pendiente')),
+    );
+  }
+
+  void _showError(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Theme.of(context).colorScheme.error,
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final isEdit = _productId != null;
-    final canSave = !_loading;
-    final colorScheme = Theme.of(context).colorScheme;
+    final canSave = !_loading && !_saving;
 
     return Scaffold(
       appBar: AppBar(
@@ -285,241 +431,185 @@ class _ProductFormPageState extends State<ProductFormPage> {
                 child: ListView(
                   padding: const EdgeInsets.all(16),
                   children: [
-                    _MetricsCard(
+                    ProductProfitSummaryCard(
                       profit: _financials.marginAmount,
-                      profitPercent: _financials.marginPercent,
+                      marginPercent: _financials.marginPercent,
                       isLoss: _isLoss,
                     ),
-                    const SizedBox(height: 16),
-                    TextFormField(
-                      controller: _skuController,
-                      textInputAction: TextInputAction.next,
-                      decoration: const InputDecoration(
-                        labelText: 'SKU',
-                        prefixIcon: Icon(Icons.qr_code_2_outlined),
-                      ),
-                    ),
                     const SizedBox(height: 12),
-                    TextFormField(
-                      controller: _nameController,
-                      textInputAction: TextInputAction.next,
-                      autofocus: !isEdit,
-                      decoration: const InputDecoration(
-                        labelText: 'Nombre',
-                        prefixIcon: Icon(Icons.inventory_2_outlined),
-                      ),
-                      validator: (value) {
-                        final v = value?.trim() ?? '';
-                        if (v.isEmpty) return 'El nombre es requerido';
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 12),
-                    TextFormField(
-                      controller: _brandController,
-                      textInputAction: TextInputAction.next,
-                      decoration: const InputDecoration(
-                        labelText: 'Marca',
-                        prefixIcon: Icon(Icons.branding_watermark_outlined),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    TextFormField(
-                      controller: _categoryController,
-                      textInputAction: TextInputAction.next,
-                      decoration: const InputDecoration(
-                        labelText: 'Categoria',
-                        prefixIcon: Icon(Icons.category_outlined),
-                      ),
-                      validator: (value) {
-                        final v = value?.trim() ?? '';
-                        if (v.isEmpty) return 'La categoria es requerida';
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 12),
-                    TextFormField(
-                      controller: _subcategoryController,
-                      textInputAction: TextInputAction.next,
-                      decoration: const InputDecoration(
-                        labelText: 'Subcategoria',
-                        prefixIcon: Icon(Icons.layers_outlined),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    TextFormField(
-                      controller: _unitController,
-                      textInputAction: TextInputAction.next,
-                      decoration: const InputDecoration(
-                        labelText: 'Unidad de medida',
-                        prefixIcon: Icon(Icons.straighten_outlined),
-                      ),
-                      validator: (value) {
-                        final v = value?.trim() ?? '';
-                        if (v.isEmpty) return 'La unidad es requerida';
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 12),
-                    TextFormField(
-                      controller: _barcodeController,
-                      textInputAction: TextInputAction.next,
-                      decoration: const InputDecoration(
-                        labelText: 'Codigo de barras',
-                        prefixIcon: Icon(Icons.qr_code_outlined),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    TextFormField(
-                      controller: _costController,
-                      keyboardType: const TextInputType.numberWithOptions(
-                        decimal: true,
-                      ),
-                      textInputAction: TextInputAction.next,
-                      decoration: const InputDecoration(
-                        labelText: 'Precio de costo',
-                        prefixIcon: Icon(Icons.payments_outlined),
-                      ),
-                      validator: (value) {
-                        final v = _parseMoney(value ?? '');
-                        if (v == null) return 'Ingresa un número';
-                        if (v < 0) return 'No puede ser negativo';
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 12),
-                    TextFormField(
-                      controller: _saleController,
-                      keyboardType: const TextInputType.numberWithOptions(
-                        decimal: true,
-                      ),
-                      textInputAction: TextInputAction.done,
-                      decoration: const InputDecoration(
-                        labelText: 'Precio de venta',
-                        prefixIcon: Icon(Icons.sell_outlined),
-                      ),
-                      validator: (value) {
-                        final v = _parseMoney(value ?? '');
-                        if (v == null) return 'Ingresa un número';
-                        if (v < 0) return 'No puede ser negativo';
-                        return null;
-                      },
-                      onFieldSubmitted: (_) => canSave ? _save() : null,
-                    ),
-                    const SizedBox(height: 16),
-                    Row(
+                    ProductFormSectionCard(
+                      title: 'Informacion basica',
                       children: [
-                        Expanded(
-                          child: TextFormField(
-                            controller: _stockController,
-                            keyboardType: const TextInputType.numberWithOptions(
-                              decimal: true,
-                            ),
-                            textInputAction: TextInputAction.next,
-                            decoration: const InputDecoration(
-                              labelText: 'Stock',
-                              prefixIcon: Icon(Icons.inventory_2_outlined),
-                            ),
-                            validator: (value) {
-                              final v = _parseMoney(value ?? '');
-                              if (v == null) return 'Numero invalido';
-                              if (v < 0) return 'No puede ser negativo';
-                              return null;
-                            },
+                        ProductFormField(
+                          controller: _nameController,
+                          label: 'Nombre',
+                          icon: Icons.inventory_2_outlined,
+                          autofocus: !isEdit,
+                          textInputAction: TextInputAction.next,
+                          validator: _requiredText,
+                        ),
+                        const SizedBox(height: 12),
+                        ProductFormField(
+                          controller: _skuController,
+                          label: 'SKU',
+                          icon: Icons.qr_code_2_outlined,
+                          textInputAction: TextInputAction.next,
+                        ),
+                        const SizedBox(height: 12),
+                        ProductFormField(
+                          controller: _barcodeController,
+                          label: 'Codigo de barras',
+                          icon: Icons.qr_code_outlined,
+                          textInputAction: TextInputAction.next,
+                          suffixIcon: IconButton(
+                            onPressed: _showPendingScanner,
+                            icon: const Icon(Icons.qr_code_scanner_outlined),
                           ),
                         ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: TextFormField(
-                            controller: _minStockController,
-                            keyboardType: const TextInputType.numberWithOptions(
-                              decimal: true,
-                            ),
-                            textInputAction: TextInputAction.next,
-                            decoration: const InputDecoration(
-                              labelText: 'Minimo',
-                              prefixIcon: Icon(Icons.warning_amber_outlined),
-                            ),
-                            validator: (value) {
-                              final v = _parseMoney(value ?? '');
-                              if (v == null) return 'Numero invalido';
-                              if (v < 0) return 'No puede ser negativo';
-                              return null;
-                            },
-                          ),
+                        const SizedBox(height: 12),
+                        ProductFormField(
+                          controller: _brandController,
+                          label: 'Marca',
+                          icon: Icons.branding_watermark_outlined,
+                          textInputAction: TextInputAction.next,
                         ),
                       ],
                     ),
-                    const SizedBox(height: 16),
-                    SwitchListTile(
-                      value: _allowDecimalQuantity,
-                      onChanged: _loading
-                          ? null
-                          : (value) =>
-                                setState(() => _allowDecimalQuantity = value),
-                      title: const Text('Permitir cantidad decimal'),
-                      contentPadding: EdgeInsets.zero,
-                    ),
-                    SwitchListTile(
-                      value: _isActive,
-                      onChanged: _loading
-                          ? null
-                          : (value) => setState(() => _isActive = value),
-                      title: const Text('Producto activo'),
-                      contentPadding: EdgeInsets.zero,
-                    ),
-                    if (_createdAt != null)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 8),
-                        child: Text(
-                          'Creado: ${formatDateTime(_createdAt!)}',
-                          style: Theme.of(context).textTheme.bodySmall
-                              ?.copyWith(
-                                color: colorScheme.onSurfaceVariant,
-                                fontWeight: FontWeight.w600,
-                              ),
+                    const SizedBox(height: 12),
+                    ProductFormSectionCard(
+                      title: 'Clasificacion',
+                      children: [
+                        ProductSelectorField<CatalogCategory>(
+                          label: 'Categoria',
+                          icon: Icons.category_outlined,
+                          valueLabel: _selectedCategory?.name,
+                          options: _selectableCategories,
+                          optionTitle: (item) => item.name,
+                          optionSubtitle: (item) => item.normalizedName,
+                          onSelected: _selectCategory,
                         ),
-                      ),
-                    const SizedBox(height: 8),
-                    if (_isLoss)
-                      Card(
-                        color: colorScheme.errorContainer,
-                        child: Padding(
-                          padding: const EdgeInsets.all(14),
-                          child: Row(
-                            children: [
-                              Icon(
-                                Icons.warning_amber_outlined,
-                                color: colorScheme.onErrorContainer,
-                              ),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: Text(
-                                  'Pérdida: el precio de venta es menor al costo.',
-                                  style: Theme.of(context).textTheme.bodyMedium
-                                      ?.copyWith(
-                                        color: colorScheme.onErrorContainer,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                ),
-                              ),
-                              TextButton(
-                                onPressed: () {
-                                  final cost = _costValue;
-                                  if (cost == null) return;
-                                  _saleController.text = cost.toStringAsFixed(
-                                    2,
-                                  );
-                                },
-                                style: TextButton.styleFrom(
-                                  foregroundColor: colorScheme.onErrorContainer,
-                                ),
-                                child: const Text('Igualar'),
-                              ),
-                            ],
+                        const SizedBox(height: 12),
+                        ProductSelectorField<CatalogSubcategory>(
+                          label: 'Subcategoria',
+                          icon: Icons.layers_outlined,
+                          valueLabel: _selectedSubcategory?.name,
+                          options: _selectableSubcategories,
+                          optionTitle: (item) => item.name,
+                          optionSubtitle: (item) => item.normalizedName,
+                          enabled: _selectedCategory != null,
+                          emptyText: 'No hay subcategorias para esta categoria',
+                          onSelected: (item) =>
+                              setState(() => _selectedSubcategory = item),
+                        ),
+                        const SizedBox(height: 12),
+                        ProductSelectorField<UnitOfMeasure>(
+                          label: 'Unidad de medida',
+                          icon: Icons.straighten_outlined,
+                          valueLabel: _selectedUnit?.name,
+                          options: _selectableUnits,
+                          optionTitle: (item) => item.name,
+                          optionSubtitle: (item) => item.allowsDecimal
+                              ? '${item.normalizedName} · permite decimal'
+                              : item.normalizedName,
+                          onSelected: _selectUnit,
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    ProductFormSectionCard(
+                      title: 'Precios',
+                      children: [
+                        ProductFormField(
+                          controller: _costController,
+                          label: 'Costo con IVA',
+                          icon: Icons.payments_outlined,
+                          keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true,
                           ),
+                          textInputAction: TextInputAction.next,
+                          validator: _validNonNegativeNumber,
                         ),
-                      ),
+                        const SizedBox(height: 12),
+                        ProductFormField(
+                          controller: _costWithoutVatController,
+                          label: 'Costo sin IVA',
+                          icon: Icons.receipt_long_outlined,
+                          readOnly: true,
+                        ),
+                        const SizedBox(height: 12),
+                        ProductFormField(
+                          controller: _saleController,
+                          label: 'Precio de venta',
+                          icon: Icons.sell_outlined,
+                          keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true,
+                          ),
+                          textInputAction: TextInputAction.next,
+                          validator: _validNonNegativeNumber,
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    ProductFormSectionCard(
+                      title: 'Inventario',
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(
+                              child: ProductFormField(
+                                controller: _stockController,
+                                label: 'Stock actual',
+                                icon: Icons.inventory_2_outlined,
+                                keyboardType:
+                                    const TextInputType.numberWithOptions(
+                                      decimal: true,
+                                    ),
+                                validator: _validNonNegativeNumber,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: ProductFormField(
+                                controller: _minStockController,
+                                label: 'Stock minimo',
+                                icon: Icons.warning_amber_outlined,
+                                keyboardType:
+                                    const TextInputType.numberWithOptions(
+                                      decimal: true,
+                                    ),
+                                validator: _validNonNegativeNumber,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        ProductStatusSwitchTile(
+                          value: _allowDecimalQuantity,
+                          onChanged: _saving
+                              ? null
+                              : (value) => setState(
+                                  () => _allowDecimalQuantity = value,
+                                ),
+                          title: 'Permitir cantidad decimal',
+                          subtitle:
+                              'Util para productos vendidos por metro, libra, litro o fraccion.',
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    ProductFormSectionCard(
+                      title: 'Estado',
+                      children: [
+                        ProductStatusSwitchTile(
+                          value: _isActive,
+                          onChanged: _saving
+                              ? null
+                              : (value) => setState(() => _isActive = value),
+                          title: 'Producto activo',
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
                   ],
                 ),
               ),
@@ -528,88 +618,16 @@ class _ProductFormPageState extends State<ProductFormPage> {
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: FilledButton.icon(
-            onPressed: canSave && !_isLoss ? _save : null,
-            icon: const Icon(Icons.save_outlined),
-            label: Text(isEdit ? 'Guardar cambios' : 'Guardar'),
+            onPressed: canSave ? _save : null,
+            icon: _saving
+                ? const SizedBox(
+                    height: 18,
+                    width: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.save_outlined),
+            label: Text(isEdit ? 'Actualizar producto' : 'Guardar producto'),
           ),
-        ),
-      ),
-    );
-  }
-}
-
-class _MetricsCard extends StatelessWidget {
-  const _MetricsCard({
-    required this.profit,
-    required this.profitPercent,
-    required this.isLoss,
-  });
-
-  final double profit;
-  final double profitPercent;
-  final bool isLoss;
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final bg = isLoss
-        ? colorScheme.errorContainer
-        : colorScheme.primaryContainer;
-    final fg = isLoss
-        ? colorScheme.onErrorContainer
-        : colorScheme.onPrimaryContainer;
-
-    return Card(
-      color: bg,
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Row(
-          children: [
-            Icon(isLoss ? Icons.trending_down : Icons.trending_up, color: fg),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Ganancia',
-                    style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                      color: fg,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    formatMoney(profit),
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      color: fg,
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Text(
-                  'Porcentaje',
-                  style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                    color: fg,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  formatPercent(profitPercent),
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    color: fg,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-              ],
-            ),
-          ],
         ),
       ),
     );

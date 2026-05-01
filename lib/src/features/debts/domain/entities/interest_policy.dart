@@ -11,4 +11,3 @@ class InterestPolicy {
   final bool appliesOnOverdueOnly;
   final bool compoundInterest;
 }
-

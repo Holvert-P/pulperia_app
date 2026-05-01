@@ -185,32 +185,32 @@ class _ProductSelectorState extends State<ProductSelector> {
                     child: c.loading
                         ? const Center(child: CircularProgressIndicator())
                         : c.products.isEmpty
-                            ? const _EmptyProducts()
-                            : ListView.separated(
-                                shrinkWrap: true,
-                                itemCount: c.products.length,
-                                separatorBuilder: (context, index) =>
-                                    const SizedBox(height: 8),
-                                itemBuilder: (context, index) {
-                                  final p = c.products[index];
-                                  return Card(
-                                    child: ListTile(
-                                      title: Text(p.name),
-                                      subtitle: Text(
-                                        'Precio: ${formatMoney(p.salePrice)}',
-                                      ),
-                                      trailing: const Icon(Icons.add),
-                                      onTap: () async {
-                                        final qty = await _askQuantity(context, p);
-                                        if (!context.mounted) return;
-                                        if (qty == null) return;
-                                        widget.onSelected(p, qty);
-                                        Navigator.of(context).pop();
-                                      },
-                                    ),
-                                  );
-                                },
-                              ),
+                        ? const _EmptyProducts()
+                        : ListView.separated(
+                            shrinkWrap: true,
+                            itemCount: c.products.length,
+                            separatorBuilder: (context, index) =>
+                                const SizedBox(height: 8),
+                            itemBuilder: (context, index) {
+                              final p = c.products[index];
+                              return Card(
+                                child: ListTile(
+                                  title: Text(p.name),
+                                  subtitle: Text(
+                                    'Precio: ${formatMoney(p.salePrice)}',
+                                  ),
+                                  trailing: const Icon(Icons.add),
+                                  onTap: () async {
+                                    final qty = await _askQuantity(context, p);
+                                    if (!context.mounted) return;
+                                    if (qty == null) return;
+                                    widget.onSelected(p, qty);
+                                    Navigator.of(context).pop();
+                                  },
+                                ),
+                              );
+                            },
+                          ),
                   ),
                 ],
               ),
