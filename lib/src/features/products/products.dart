@@ -1,0 +1,17 @@
+export 'data/product_importer.dart';
+export 'data/datasources/product_local_datasource.dart';
+export 'data/datasources/product_local_datasource_impl.dart';
+export 'data/models/product_model.dart';
+export 'data/models/product_price_history_model.dart';
+export 'data/repositories/product_repository_impl.dart';
+export 'domain/entities/price_history_entry.dart';
+export 'domain/entities/product.dart';
+export 'domain/repositories/product_repository.dart';
+export 'domain/services/product_financials.dart';
+export 'domain/services/product_text_normalizer.dart';
+export 'domain/usecases/product_usecases.dart';
+export 'presentation/controllers/product_detail_controller.dart';
+export 'presentation/controllers/product_list_controller.dart';
+export 'presentation/pages/product_detail_page.dart';
+export 'presentation/pages/product_form_page.dart';
+export 'presentation/pages/product_list_page.dart';
