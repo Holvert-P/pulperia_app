@@ -10,6 +10,7 @@ class ProductSelectorField<T> extends StatelessWidget {
     required this.optionTitle,
     required this.onSelected,
     this.optionSubtitle,
+    this.optionSearchText,
     this.enabled = true,
     this.emptyText = 'No hay opciones disponibles',
   });
@@ -20,6 +21,7 @@ class ProductSelectorField<T> extends StatelessWidget {
   final List<T> options;
   final String Function(T item) optionTitle;
   final String? Function(T item)? optionSubtitle;
+  final String Function(T item)? optionSearchText;
   final ValueChanged<T> onSelected;
   final bool enabled;
   final String emptyText;
@@ -59,6 +61,7 @@ class ProductSelectorField<T> extends StatelessWidget {
         options: options,
         optionTitle: optionTitle,
         optionSubtitle: optionSubtitle,
+        optionSearchText: optionSearchText,
         emptyText: emptyText,
       ),
     );
@@ -74,6 +77,7 @@ class _SelectorSheet<T> extends StatefulWidget {
     required this.options,
     required this.optionTitle,
     required this.optionSubtitle,
+    required this.optionSearchText,
     required this.emptyText,
   });
 
@@ -81,6 +85,7 @@ class _SelectorSheet<T> extends StatefulWidget {
   final List<T> options;
   final String Function(T item) optionTitle;
   final String? Function(T item)? optionSubtitle;
+  final String Function(T item)? optionSearchText;
   final String emptyText;
 
   @override
@@ -97,7 +102,10 @@ class _SelectorSheetState<T> extends State<_SelectorSheet<T>> {
       if (query.isEmpty) return true;
       final title = widget.optionTitle(item).toLowerCase();
       final subtitle = widget.optionSubtitle?.call(item)?.toLowerCase() ?? '';
-      return title.contains(query) || subtitle.contains(query);
+      final searchText = widget.optionSearchText?.call(item).toLowerCase() ?? '';
+      return title.contains(query) ||
+          subtitle.contains(query) ||
+          searchText.contains(query);
     }).toList();
 
     return SafeArea(

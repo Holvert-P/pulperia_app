@@ -485,7 +485,7 @@ class _ProductFormPageState extends State<ProductFormPage> {
                           valueLabel: _selectedCategory?.name,
                           options: _selectableCategories,
                           optionTitle: (item) => item.name,
-                          optionSubtitle: (item) => item.normalizedName,
+                          optionSearchText: (item) => item.normalizedName,
                           onSelected: _selectCategory,
                         ),
                         const SizedBox(height: 12),
@@ -495,7 +495,7 @@ class _ProductFormPageState extends State<ProductFormPage> {
                           valueLabel: _selectedSubcategory?.name,
                           options: _selectableSubcategories,
                           optionTitle: (item) => item.name,
-                          optionSubtitle: (item) => item.normalizedName,
+                          optionSearchText: (item) => item.normalizedName,
                           enabled: _selectedCategory != null,
                           emptyText: 'No hay subcategorias para esta categoria',
                           onSelected: (item) =>
@@ -509,8 +509,9 @@ class _ProductFormPageState extends State<ProductFormPage> {
                           options: _selectableUnits,
                           optionTitle: (item) => item.name,
                           optionSubtitle: (item) => item.allowsDecimal
-                              ? '${item.normalizedName} · permite decimal'
-                              : item.normalizedName,
+                              ? 'Permite cantidad decimal'
+                              : null,
+                          optionSearchText: (item) => item.normalizedName,
                           onSelected: _selectUnit,
                         ),
                       ],
